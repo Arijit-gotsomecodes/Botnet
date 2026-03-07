@@ -1,0 +1,28 @@
+# Ignore massive dataset folder
+DATA/
+
+# Python
+backend/__pycache__/
+backend/.venv/
+backend/venv/
+backend/env/
+backend/.pytest_cache/
+*.pyc
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.eslintcache
+
+# Env vars
+.env
+.env.local
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

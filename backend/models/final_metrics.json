@@ -1,0 +1,29 @@
+{
+  "Random Forest": {
+    "f1": 0.9766,
+    "precision": 0.9546,
+    "recall": 0.9997,
+    "accuracy": 0.9694,
+    "train_time_sec": 0.19,
+    "inference_time_sec": 0.0277,
+    "test_samples": 15000
+  },
+  "XGBoost": {
+    "f1": 0.9768,
+    "precision": 0.9546,
+    "recall": 1.0,
+    "accuracy": 0.9696,
+    "train_time_sec": 0.14,
+    "inference_time_sec": 0.0048,
+    "test_samples": 15000
+  },
+  "Neural Network": {
+    "f1": 0.9713,
+    "precision": 0.9442,
+    "recall": 1.0,
+    "accuracy": 0.9622,
+    "train_time_sec": 1.3,
+    "inference_time_sec": 0.0048,
+    "test_samples": 15000
+  }
+}
