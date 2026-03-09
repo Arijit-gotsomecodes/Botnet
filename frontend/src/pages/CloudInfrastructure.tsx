@@ -136,8 +136,8 @@ export default function CloudInfrastructure() {
                                 <div
                                     key={b.index}
                                     className={`flex-1 rounded-t transition-all duration-500 ${b.active
-                                        ? 'bg-gradient-to-t from-soc-primary to-soc-primary-light'
-                                        : 'bg-soc-border/30'
+                                        ? 'bg-soc-primary'
+                                        : 'bg-soc-border/50'
                                         }`}
                                     style={{ height: b.active ? `${60 + Math.random() * 40}%` : '20%' }}
                                 />

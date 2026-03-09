@@ -2,7 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchHealth } from '../api';
 import {
-    Shield, Activity, BarChart3, Cloud, Brain, Database,
+    Activity, BarChart3, Cloud, Brain, Database,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -36,9 +36,6 @@ export default function Layout() {
                 {/* Logo */}
                 <div className="p-5 border-b border-soc-border">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-soc-primary to-soc-accent flex items-center justify-center shadow-lg">
-                            <Shield className="w-5 h-5 text-white" />
-                        </div>
                         <div>
                             <h1 className="text-sm font-bold text-soc-text tracking-wide">Cloud-SOC</h1>
                             <p className="text-[0.625rem] text-soc-dim uppercase tracking-widest">IoT Security</p>
@@ -90,7 +87,7 @@ export default function Layout() {
                         <h2 className="text-sm font-semibold text-soc-text">
                             IoT Security Operations Center
                         </h2>
-                        <span className="badge badge-info">NCI Cloud ML</span>
+                        <span className="badge badge-info">Cloud Machine Learning</span>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-soc-dim">
                         <span>IoT-23 Dataset • dev_scale</span>

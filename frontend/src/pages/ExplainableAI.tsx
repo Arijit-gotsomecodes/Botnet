@@ -108,7 +108,7 @@ export default function ExplainableAI() {
                     <button
                         onClick={handlePredict}
                         disabled={loading}
-                        className="w-full mt-4 px-4 py-2.5 rounded-lg bg-gradient-to-r from-soc-primary to-soc-accent text-white font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full mt-4 px-4 py-2.5 rounded-lg bg-soc-primary text-white font-semibold text-sm hover:bg-soc-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                         {loading ? (
                             <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />

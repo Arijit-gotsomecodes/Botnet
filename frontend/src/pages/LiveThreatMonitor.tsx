@@ -87,11 +87,12 @@ export default function LiveThreatMonitor() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-xl font-bold text-soc-text flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-soc-primary" />
+                    <h1 className="text-2xl font-bold text-soc-text tracking-tight flex items-center gap-3">
+                        <Activity className="w-6 h-6 text-soc-primary" />
                         Live Threat Monitor
+                        <span className="badge badge-success animate-pulse-slow">LIVE</span>
                     </h1>
-                    <p className="text-sm text-soc-dim mt-1">Real-time network flow analysis from IoT-23 test dataset</p>
+                    <p className="text-sm text-soc-dim mt-1">Cloud Machine Learning Project • IoT-23 Network Traffic Stream</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <label className="text-xs text-soc-dim">

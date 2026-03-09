@@ -81,7 +81,7 @@ export default function ModelPerformance() {
 
             {/* Best Model Card */}
             {bestModel && (
-                <div className="card !border-soc-primary/30 bg-gradient-to-r from-soc-card to-soc-primary/5">
+                <div className="card !border-soc-primary/30 bg-soc-card">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-soc-primary/20 flex items-center justify-center">
                             <Award className="w-6 h-6 text-soc-primary" />

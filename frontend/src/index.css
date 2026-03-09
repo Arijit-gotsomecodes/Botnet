@@ -3,20 +3,20 @@
 
 /* ── Custom dark security theme ────────────────────────────── */
 @theme {
-  --color-soc-bg: #0a0e1a;
-  --color-soc-surface: #111827;
-  --color-soc-card: #1a2332;
-  --color-soc-border: #1e2d3d;
-  --color-soc-hover: #243447;
+  --color-soc-bg: #000000;
+  --color-soc-surface: #0a0a0a;
+  --color-soc-card: #121212;
+  --color-soc-border: #27272a;
+  --color-soc-hover: #1f1f22;
 
-  --color-soc-text: #e2e8f0;
-  --color-soc-muted: #94a3b8;
-  --color-soc-dim: #64748b;
+  --color-soc-text: #fafafa;
+  --color-soc-muted: #a1a1aa;
+  --color-soc-dim: #71717a;
 
-  --color-soc-primary: #06b6d4;
-  --color-soc-primary-light: #22d3ee;
-  --color-soc-accent: #3b82f6;
-  --color-soc-accent-light: #60a5fa;
+  --color-soc-primary: #3b82f6;
+  --color-soc-primary-light: #60a5fa;
+  --color-soc-accent: #2563eb;
+  --color-soc-accent-light: #3b82f6;
 
   --color-soc-success: #10b981;
   --color-soc-warning: #f59e0b;
@@ -72,7 +72,6 @@ body {
 
 .card:hover {
   border-color: color-mix(in srgb, var(--color-soc-primary) 30%, transparent);
-  box-shadow: 0 0 20px var(--color-soc-glow-cyan);
 }
 
 .card-header {
