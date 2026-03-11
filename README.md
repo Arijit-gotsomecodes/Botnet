@@ -14,6 +14,7 @@ If you are a team member looking to understand how this code works or how to wri
 3. [Machine Learning Models (RF, XGBoost, NN)](docs/03_machine_learning_models.md)
 4. [System Architecture & Diagrams](docs/04_system_architecture.md)
 5. [IEEE Report Writing Guide](docs/05_ieee_report_guide.md)
+6. [Cloud Deployment Guide (AWS)](docs/06_cloud_deploy.md)
 
 ---
 
