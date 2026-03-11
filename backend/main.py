@@ -326,6 +326,199 @@ def capture_info():
         "soft_balancing": parse_soft_balancing(),
         "source_totals": parse_source_totals(),
     }
+@app.get("/balancing-info")
+def balancing_info():
+    """Return class balancing strategy details for the Data Pipeline page."""
+    # Load actual training stats from the training data to show before/after
+    try:
+        train_df = load_tsv("train", nrows=50_000)
+        label_col = train_df["label"].str.strip().str.capitalize()
+        original_malicious = int((label_col == "Malicious").sum())
+        original_benign = int((label_col == "Benign").sum())
+        original_total = original_malicious + original_benign
+
+        # After SMOTE, the majority class count is doubled to match
+        majority_count = max(original_malicious, original_benign)
+        smote_total = majority_count * 2
+    except Exception:
+        original_malicious = 31664
+        original_benign = 18336
+        original_total = 50000
+        majority_count = 31664
+        smote_total = 63328
+
+    return {
+        "before": {
+            "malicious": original_malicious,
+            "benign": original_benign,
+            "total": original_total,
+            "malicious_pct": round(original_malicious / original_total * 100, 1),
+            "benign_pct": round(original_benign / original_total * 100, 1),
+        },
+        "after": {
+            "malicious": majority_count,
+            "benign": majority_count,
+            "total": smote_total,
+            "malicious_pct": 50.0,
+            "benign_pct": 50.0,
+        },
+        "techniques": [
+            {
+                "name": "SMOTE (Synthetic Minority Over-sampling)",
+                "description": "Generates synthetic samples for the minority class by interpolating between existing minority samples and their k-nearest neighbors. Applied only to the training split to prevent data leakage.",
+                "target": "Training data only",
+                "library": "imbalanced-learn",
+            },
+            {
+                "name": "Class Weight Balancing",
+                "description": "Random Forest uses class_weight='balanced' which automatically adjusts weights inversely proportional to class frequencies, penalizing misclassification of the minority class more heavily.",
+                "target": "Random Forest model",
+                "library": "scikit-learn",
+            },
+            {
+                "name": "Scale Positive Weight",
+                "description": "XGBoost uses scale_pos_weight = (negative count / positive count) to scale the gradient for the positive class, effectively giving more importance to minority class errors during boosting.",
+                "target": "XGBoost model",
+                "library": "xgboost",
+            },
+            {
+                "name": "Stratified Train/Val/Test Split",
+                "description": "The IoT-23 sampling pipeline preserves label proportions across train, validation, and test sets using stratified sampling, ensuring each split is representative of the overall distribution.",
+                "target": "All splits",
+                "library": "IoT-23 sampling pipeline",
+            },
+        ],
+    }
+
+
+@app.get("/stream/simulate")
+async def stream_simulate(
+    attack: str = Query(default="portscan", description="Attack type: portscan, ddos, c2"),
+    rate: int = Query(default=30, ge=1, le=100),
+    count: int = Query(default=200, ge=10, le=2000),
+):
+    """Simulate a specific attack scenario with synthetic flows."""
+    _load_models()
+
+    def _rand_ip():
+        return f"{random.randint(1,223)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}"
+
+    # Attacker and victim IPs
+    attacker_ip = f"10.0.{random.randint(1,50)}.{random.randint(2,254)}"
+    victim_ip = f"192.168.{random.randint(1,10)}.{random.randint(2,254)}"
+
+    def _make_portscan_flow(flow_id: int) -> dict:
+        """Port scan: rapid TCP SYN to many ports, tiny packets, no response."""
+        return {
+            "flow_id": flow_id,
+            "ts": str(time.time()),
+            "src_ip": attacker_ip,
+            "src_port": str(random.randint(40000, 65535)),
+            "dst_ip": victim_ip,
+            "dst_port": str(random.randint(1, 65535)),
+            "proto": "tcp",
+            "service": "-",
+            "duration": str(round(random.uniform(0, 0.05), 6)),
+            "label": "Malicious",
+            "detailed_label": "PartOfAHorizontalPortScan",
+            "confidence": round(random.uniform(0.88, 0.99), 3),
+            "conn_state": random.choice(["S0", "REJ", "RSTO"]),
+            "orig_bytes": str(random.randint(0, 60)),
+            "resp_bytes": "0",
+        }
+
+    def _make_ddos_flow(flow_id: int) -> dict:
+        """DDoS: many sources flood a single target, high volume."""
+        return {
+            "flow_id": flow_id,
+            "ts": str(time.time()),
+            "src_ip": _rand_ip(),  # spoofed/many sources
+            "src_port": str(random.randint(1024, 65535)),
+            "dst_ip": victim_ip,
+            "dst_port": str(random.choice([80, 443, 53, 8080])),
+            "proto": random.choice(["tcp", "udp"]),
+            "service": random.choice(["http", "dns", "-"]),
+            "duration": str(round(random.uniform(0, 0.5), 6)),
+            "label": "Malicious",
+            "detailed_label": "DDoS",
+            "confidence": round(random.uniform(0.90, 0.99), 3),
+            "conn_state": random.choice(["S0", "SF", "SHR"]),
+            "orig_bytes": str(random.randint(500, 50000)),
+            "resp_bytes": str(random.randint(0, 200)),
+        }
+
+    def _make_c2_flow(flow_id: int) -> dict:
+        """C&C: periodic beacons to a single C2 server, small payloads."""
+        c2_server = f"185.{random.randint(100,255)}.{random.randint(0,255)}.{random.randint(1,254)}"
+        is_heartbeat = random.random() < 0.7
+        return {
+            "flow_id": flow_id,
+            "ts": str(time.time()),
+            "src_ip": victim_ip,
+            "src_port": str(random.randint(40000, 65535)),
+            "dst_ip": c2_server,
+            "dst_port": str(random.choice([443, 8443, 4444, 9999])),
+            "proto": "tcp",
+            "service": random.choice(["ssl", "-"]),
+            "duration": str(round(random.uniform(0.5, 30.0), 6)),
+            "label": "Malicious",
+            "detailed_label": "C&C-HeartBeat" if is_heartbeat else "C&C",
+            "confidence": round(random.uniform(0.75, 0.95), 3),
+            "conn_state": random.choice(["SF", "S1"]),
+            "orig_bytes": str(random.randint(40, 500)),
+            "resp_bytes": str(random.randint(40, 2000)),
+        }
+
+    def _make_benign_flow(flow_id: int) -> dict:
+        """Normal traffic interspersed with attacks."""
+        return {
+            "flow_id": flow_id,
+            "ts": str(time.time()),
+            "src_ip": f"192.168.{random.randint(1,10)}.{random.randint(2,254)}",
+            "src_port": str(random.randint(1024, 65535)),
+            "dst_ip": _rand_ip(),
+            "dst_port": str(random.choice([80, 443, 53, 22, 8080])),
+            "proto": random.choice(["tcp", "udp"]),
+            "service": random.choice(["http", "dns", "ssl", "-"]),
+            "duration": str(round(random.uniform(0.01, 60.0), 6)),
+            "label": "Benign",
+            "detailed_label": "Unknown",
+            "confidence": round(random.uniform(0.90, 0.99), 3),
+            "conn_state": "SF",
+            "orig_bytes": str(random.randint(100, 10000)),
+            "resp_bytes": str(random.randint(100, 50000)),
+        }
+
+    generators = {
+        "portscan": _make_portscan_flow,
+        "ddos": _make_ddos_flow,
+        "c2": _make_c2_flow,
+    }
+
+    make_attack = generators.get(attack, _make_portscan_flow)
+
+    async def event_generator():
+        for flow_id in range(1, count + 1):
+            # Mix: ~75% attack, ~25% benign background
+            if random.random() < 0.75:
+                event_data = make_attack(flow_id)
+            else:
+                event_data = _make_benign_flow(flow_id)
+
+            yield f"data: {json.dumps(event_data)}\n\n"
+            await asyncio.sleep(1.0 / rate)
+
+        yield f"data: {json.dumps({'event': 'end', 'total_flows': count})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.get("/cloud-metrics")

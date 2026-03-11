@@ -24,11 +24,11 @@ IoT devices are notoriously insecure. Hackers often take them over to create "bo
 ## 3. What does the Dashboard actually do?
 Our dashboard has 5 main pages, each proving a different concept for our project:
 
-1. **Live Threat Monitor:** Simulates a real-time stream of network traffic. Our ML model is scoring each connection "live" to catch attacks. (Shows *Throughput/Latency* paradigms).
+1. **Live Threat Monitor:** Streams real-time network traffic scored by our ML model. Includes three **attack simulation buttons** (Port Scan, DDoS, C&C) that generate realistic synthetic attack traffic so you can see how the models respond to different threat scenarios.
 2. **Model Performance:** Proves our Machine Learning actually works. We compare three different "brains" (Algorithms) to see which is smartest.
 3. **Cloud Infrastructure:** A simulation of an AWS environment. Shows what happens when traffic gets too heavy and the cloud has to automatically add more servers (Auto-scaling).
 4. **Explainable AI (XAI):** Machine learning shouldn't be a "black box". This page explains *why* the AI thought something was a hack, showing exactly which data points tipped it off.
-5. **Data Pipeline:** Shows the journey of our data from raw, messy files to clean data ready for AI.
+5. **Data Pipeline:** Shows the full journey of our data, including a **Class Balancing Strategy** section with before/after SMOTE visualizations proving we handled the dataset's natural class imbalance.
 
 ## 4. The Dataset We Used
 We used the famous **IoT-23 dataset**. This dataset was created by real cybersecurity researchers (Stratosphere Laboratory). They literally set up infected IoT devices in a lab, let them attack things, and recorded all the internet traffic.

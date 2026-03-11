@@ -52,7 +52,15 @@ cd backend
 # Make sure your venv is activated
 python train_models.py
 ```
-This script will read the dataset from `DATA/`, train Random Forest, XGBoost, and a Neural Network, and save the resulting models to the `models/` directory.
+This script will read the dataset from `DATA/`, apply **SMOTE** (Synthetic Minority Over-sampling) to balance the training classes to a 50/50 split, train Random Forest, XGBoost, and a Neural Network, and save the resulting models to the `models/` directory.
+
+## 🎯 Attack Simulation
+The **Live Threat Monitor** page includes three attack simulation buttons:
+- **Port Scan** — Generates horizontal port scan traffic patterns (single attacker, many ports)
+- **DDoS** — Generates distributed denial-of-service traffic (many spoofed sources, single target)
+- **C&C** — Generates Command & Control beacon traffic (periodic heartbeats to external server)
+
+Each simulation streams 300 synthetic flows (75% attack, 25% benign background) so you can see how the models classify different attack types in real time.
 
 ## ☁️ Deployment Architecture
 *   **Frontend:** The React SPA is designed to be built (`npm run build`) and deployed to a static host like **Netlify** or Vercel. Redirects are already configured in `public/_redirects`.

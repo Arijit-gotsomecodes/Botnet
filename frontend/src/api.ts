@@ -25,6 +25,11 @@ export async function fetchCloudMetrics() {
     return res.json();
 }
 
+export async function fetchBalancingInfo() {
+    const res = await fetch(`${API_BASE}/balancing-info`);
+    return res.json();
+}
+
 export async function postPredict(features: Record<string, unknown>) {
     const res = await fetch(`${API_BASE}/predict`, {
         method: 'POST',
@@ -36,4 +41,8 @@ export async function postPredict(features: Record<string, unknown>) {
 
 export function createSSEStream(rate: number = 20): EventSource {
     return new EventSource(`${API_BASE}/stream?rate=${rate}`);
+}
+
+export function createSimulationStream(attack: string, rate: number = 30, count: number = 200): EventSource {
+    return new EventSource(`${API_BASE}/stream/simulate?attack=${attack}&rate=${rate}&count=${count}`);
 }

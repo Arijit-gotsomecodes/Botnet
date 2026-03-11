@@ -27,6 +27,7 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBClassifier
+from imblearn.over_sampling import SMOTE
 
 from data_loader import (
     load_tsv, FEATURE_COLS_NUMERIC, FEATURE_COLS_CATEGORICAL,
@@ -134,17 +135,26 @@ def main():
         X_sub, y_sub = X_train[:n], y_train[:n]
         print(f"      Fraction {frac:.0%} → {n} rows")
 
+        # Apply SMOTE to balance the training subset
+        smote = SMOTE(random_state=SEED)
+        try:
+            X_sub_resampled, y_sub_resampled = smote.fit_resample(X_sub, y_sub)
+            print(f"        SMOTE: Resampled from {len(X_sub)} to {len(X_sub_resampled)} rows")
+        except ValueError as e:
+            print(f"        SMOTE failed (too few samples): {e}. Using original.")
+            X_sub_resampled, y_sub_resampled = X_sub, y_sub
+
         for name, clf in models.items():
             import copy
             model_copy = copy.deepcopy(clf)
-            model_copy.fit(X_sub, y_sub)
+            model_copy.fit(X_sub_resampled, y_sub_resampled)
 
-            train_pred = model_copy.predict(X_sub)
+            train_pred = model_copy.predict(X_sub_resampled)
             val_pred   = model_copy.predict(X_val)
 
             learning_curves[name]["fractions"].append(frac)
             learning_curves[name]["train_f1"].append(
-                round(f1_score(y_sub, train_pred, zero_division=0), 4)
+                round(f1_score(y_sub_resampled, train_pred, zero_division=0), 4)
             )
             learning_curves[name]["val_f1"].append(
                 round(f1_score(y_val, val_pred, zero_division=0), 4)
@@ -152,6 +162,13 @@ def main():
 
     # ── Final training (100%) ────────────────────────────────────
     print("[4/5] Training final models on full subsample …")
+    
+    # Apply SMOTE to the final full training subset
+    smote_final = SMOTE(random_state=SEED)
+    X_train_resampled, y_train_resampled = smote_final.fit_resample(X_train, y_train)
+    print(f"      SMOTE Final: Resampled from {len(X_train)} to {len(X_train_resampled)} rows")
+    print(f"      Class distribution: Benign (0)={np.sum(y_train_resampled==0)}, Malicious (1)={np.sum(y_train_resampled==1)}")
+
     final_metrics = {}
     confusion_matrices = {}
     roc_data = {}
@@ -159,7 +176,7 @@ def main():
     for name, clf in models.items():
         print(f"      Training {name} …")
         t1 = time.time()
-        clf.fit(X_train, y_train)
+        clf.fit(X_train_resampled, y_train_resampled)
         train_time = time.time() - t1
 
         # Save model

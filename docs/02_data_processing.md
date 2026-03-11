@@ -38,6 +38,34 @@ When the API receives a new flow of network traffic (or when training), we proce
 *   **Label Encoding:** AI models only understand math. We use `sklearn.preprocessing.LabelEncoder` to convert string categories (like `proto`: TCP/UDP, or `conn_state`: S0/SF) into integers. The fitted encoders are saved to `models/preprocessor.joblib`.
 *   **Selected Features:** We drop useless identifiers like IP addresses and Keep 11 behavioral features: `duration`, `orig_bytes`, `resp_bytes`, `orig_pkts`, `resp_pkts`, `orig_ip_bytes`, `resp_ip_bytes`, `missed_bytes`, `proto`, `conn_state`, and `service`.
 
+## 4. Class Imbalance Handling ⚖️
+
+This is one of the most critical parts of our pipeline. In real-world cybersecurity data, the class distribution is **never balanced**. Our IoT-23 dataset has a ~63% Malicious / ~37% Benign split. If we trained our models on this raw data, they would be biased toward predicting "Malicious" because that's what they saw most.
+
+We addressed this with a **multi-layered balancing strategy**. You can see this visualized on the **Data Pipeline page** of the dashboard under "Class Balancing Strategy".
+
+### Technique 1: SMOTE (Synthetic Minority Over-sampling Technique)
+*Library: `imbalanced-learn`*
+
+**What it does:** SMOTE creates *synthetic* (fake but realistic) samples for the minority class. It works by picking a minority-class sample, finding its k-nearest neighbors (other minority samples that are "close" in feature space), and generating a new data point along the line between them.
+
+**How we applied it:**
+- SMOTE is applied **only to the training data** to prevent data leakage. The validation and test sets remain untouched so our evaluation metrics reflect real-world performance.
+- Before SMOTE: 31,664 Malicious vs 18,336 Benign (63.3% / 36.7%)
+- After SMOTE: 31,664 Malicious vs 31,664 Benign (50% / 50% — perfectly balanced!)
+- Total training samples increased from 50,000 → 63,328
+
+> **⚠️ Important for IEEE report:** Always mention that SMOTE was applied only to the training split. Applying it to test data is a cardinal sin in ML — it would make your evaluation metrics meaninglessly optimistic.
+
+### Technique 2: Class Weight Balancing (Random Forest)
+Random Forest uses `class_weight='balanced'`, which tells scikit-learn to automatically adjust the loss function. In plain English: getting a Benign sample wrong costs the model *more* than getting a Malicious one wrong. This mathematically compensates for any remaining imbalance.
+
+### Technique 3: Scale Positive Weight (XGBoost)
+XGBoost uses `scale_pos_weight = (negative_count / positive_count)`. This acts as a gradient multiplier during boosting, amplifying the importance of correctly predicting minority-class samples.
+
+### Technique 4: Stratified Splitting
+Our 10-step sampling pipeline preserves the original label proportions across train, validation, and test sets. This ensures each split is statistically representative of the whole dataset.
+
 ---
 
 **Next up:** Read `03_machine_learning_models.md` to see how we trained our "brains"!

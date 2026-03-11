@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Activity, AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, ShieldCheck, Zap, Crosshair, Waves, Radio } from 'lucide-react';
 import Plot from 'react-plotly.js';
-import { createSSEStream } from '../api';
+import { createSSEStream, createSimulationStream } from '../api';
 
 interface FlowEvent {
     flow_id: number;
@@ -19,6 +19,8 @@ interface FlowEvent {
     conn_state: string;
 }
 
+type SimulationType = 'portscan' | 'ddos' | 'c2' | null;
+
 export default function LiveThreatMonitor() {
     const [flows, setFlows] = useState<FlowEvent[]>([]);
     const [stats, setStats] = useState({
@@ -26,15 +28,36 @@ export default function LiveThreatMonitor() {
     });
     const [attackDist, setAttackDist] = useState<Record<string, number>>({});
     const [streaming, setStreaming] = useState(false);
+    const [activeSimulation, setActiveSimulation] = useState<SimulationType>(null);
     const [rate, setRate] = useState(20);
     const esRef = useRef<EventSource | null>(null);
     const logRef = useRef<HTMLDivElement>(null);
+
+    const handleEvent = useCallback((data: FlowEvent) => {
+        setFlows((prev) => [data, ...prev].slice(0, 200));
+        setStats((prev) => ({
+            total: prev.total + 1,
+            malicious: prev.malicious + (data.label === 'Malicious' ? 1 : 0),
+            benign: prev.benign + (data.label === 'Benign' ? 1 : 0),
+        }));
+        setAttackDist((prev) => {
+            const key = data.detailed_label || 'Unknown';
+            return { ...prev, [key]: (prev[key] || 0) + 1 };
+        });
+    }, []);
+
+    const stopStream = useCallback(() => {
+        esRef.current?.close();
+        setStreaming(false);
+        setActiveSimulation(null);
+    }, []);
 
     const startStream = useCallback(() => {
         if (esRef.current) esRef.current.close();
         const es = createSSEStream(rate);
         esRef.current = es;
         setStreaming(true);
+        setActiveSimulation(null);
 
         es.onmessage = (e) => {
             try {
@@ -44,28 +67,47 @@ export default function LiveThreatMonitor() {
                     setStreaming(false);
                     return;
                 }
-                setFlows((prev) => [data, ...prev].slice(0, 200));
-                setStats((prev) => ({
-                    total: prev.total + 1,
-                    malicious: prev.malicious + (data.label === 'Malicious' ? 1 : 0),
-                    benign: prev.benign + (data.label === 'Benign' ? 1 : 0),
-                }));
-                setAttackDist((prev) => {
-                    const key = data.detailed_label || 'Unknown';
-                    return { ...prev, [key]: (prev[key] || 0) + 1 };
-                });
+                handleEvent(data);
             } catch { }
         };
 
         es.onerror = () => {
             setStreaming(false);
         };
-    }, [rate]);
+    }, [rate, handleEvent]);
 
-    const stopStream = () => {
-        esRef.current?.close();
-        setStreaming(false);
-    };
+    const startSimulation = useCallback((attack: SimulationType) => {
+        if (!attack) return;
+        if (esRef.current) esRef.current.close();
+
+        // Reset stats for the simulation
+        setFlows([]);
+        setStats({ total: 0, malicious: 0, benign: 0 });
+        setAttackDist({});
+
+        const es = createSimulationStream(attack, rate, 300);
+        esRef.current = es;
+        setStreaming(true);
+        setActiveSimulation(attack);
+
+        es.onmessage = (e) => {
+            try {
+                const data: FlowEvent = JSON.parse(e.data);
+                if ('event' in data) {
+                    es.close();
+                    setStreaming(false);
+                    setActiveSimulation(null);
+                    return;
+                }
+                handleEvent(data);
+            } catch { }
+        };
+
+        es.onerror = () => {
+            setStreaming(false);
+            setActiveSimulation(null);
+        };
+    }, [rate, handleEvent]);
 
     useEffect(() => {
         return () => esRef.current?.close();
@@ -80,7 +122,13 @@ export default function LiveThreatMonitor() {
     // Pie chart data
     const pieLabels = Object.keys(attackDist).filter(k => k !== 'Unknown').slice(0, 8);
     const pieValues = pieLabels.map(k => attackDist[k]);
-    const pieColors = ['#06b6d4', '#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#f97316'];
+    const pieColors = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#f97316', '#06b6d4'];
+
+    const simButtons: { key: SimulationType; label: string; icon: typeof Crosshair; desc: string }[] = [
+        { key: 'portscan', label: 'Port Scan', icon: Crosshair, desc: 'Horizontal scan across ports' },
+        { key: 'ddos', label: 'DDoS', icon: Waves, desc: 'Distributed denial of service' },
+        { key: 'c2', label: 'C&C', icon: Radio, desc: 'Command & Control beacons' },
+    ];
 
     return (
         <div className="space-y-6">
@@ -120,6 +168,39 @@ export default function LiveThreatMonitor() {
                 </div>
             </div>
 
+            {/* Attack Simulation Buttons */}
+            <div className="card">
+                <div className="card-header">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Simulate Attack Scenario
+                </div>
+                <div className="grid grid-cols-3 gap-3 mt-3">
+                    {simButtons.map(({ key, label, icon: Icon, desc }) => (
+                        <button
+                            key={key}
+                            onClick={() => startSimulation(key)}
+                            disabled={streaming && activeSimulation !== key}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all duration-200 ${activeSimulation === key
+                                    ? 'bg-soc-danger/20 border-soc-danger/50 text-soc-danger'
+                                    : 'bg-soc-surface border-soc-border text-soc-text hover:bg-soc-hover hover:border-soc-primary/40'
+                                } ${streaming && activeSimulation !== key ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                        >
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${activeSimulation === key ? 'bg-soc-danger/30' : 'bg-soc-card'
+                                }`}>
+                                <Icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <div className="text-sm font-semibold">{label}</div>
+                                <div className="text-[0.65rem] text-soc-dim">{desc}</div>
+                            </div>
+                            {activeSimulation === key && (
+                                <span className="ml-auto badge badge-danger animate-pulse-slow text-[0.6rem]">ACTIVE</span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {/* Stat Cards */}
             <div className="grid grid-cols-4 gap-4">
                 <div className="card">
@@ -153,7 +234,11 @@ export default function LiveThreatMonitor() {
                     <div className="flex items-center gap-2 mt-2">
                         <div className={`pulse-dot ${streaming ? 'bg-soc-success' : 'bg-soc-dim'}`} />
                         <span className={`text-sm font-semibold ${streaming ? 'text-soc-success' : 'text-soc-dim'}`}>
-                            {streaming ? 'LIVE' : 'STOPPED'}
+                            {streaming
+                                ? activeSimulation
+                                    ? `SIM: ${activeSimulation.toUpperCase()}`
+                                    : 'LIVE'
+                                : 'STOPPED'}
                         </span>
                     </div>
                     <div className="stat-label">{rate} flows/sec</div>
@@ -171,7 +256,7 @@ export default function LiveThreatMonitor() {
                     <div ref={logRef} className="h-[400px] overflow-y-auto font-mono text-xs">
                         {flows.length === 0 ? (
                             <div className="flex items-center justify-center h-full text-soc-dim">
-                                Click "Start Streaming" to begin monitoring
+                                Click "Start Streaming" or simulate an attack to begin monitoring
                             </div>
                         ) : (
                             flows.map((f, i) => (
@@ -214,7 +299,7 @@ export default function LiveThreatMonitor() {
                                 marker: { colors: pieColors },
                                 textinfo: 'label+percent',
                                 textposition: 'outside',
-                                textfont: { size: 10, color: '#94a3b8', family: 'Inter, sans-serif' },
+                                textfont: { size: 10, color: '#a1a1aa', family: 'Inter, sans-serif' },
                                 hoverinfo: 'label+value+percent',
                             }]}
                             layout={{
@@ -223,7 +308,7 @@ export default function LiveThreatMonitor() {
                                 margin: { t: 10, b: 10, l: 10, r: 10 },
                                 showlegend: false,
                                 height: 320,
-                                font: { color: '#94a3b8' },
+                                font: { color: '#a1a1aa' },
                             }}
                             config={{ displayModeBar: false, responsive: true }}
                             style={{ width: '100%' }}
