@@ -66,7 +66,10 @@ def _get_client():
     global _s3_client
     if _s3_client is None:
         import boto3
-        _s3_client = boto3.client("s3", region_name=REGION)
+        from botocore import UNSIGNED
+        from botocore.config import Config
+        # Buckets are public — use unsigned requests so no credentials are needed
+        _s3_client = boto3.client("s3", region_name=REGION, config=Config(signature_version=UNSIGNED))
     return _s3_client
 
 
