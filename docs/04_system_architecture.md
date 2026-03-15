@@ -17,14 +17,18 @@ This shows exactly how the processes, ports, classes, and filesystem interact wi
 ## 2. The Backend (FastAPI / Python)
 *Located in `backend/` directory.*
 
-We built our backend using **FastAPI** because it is incredibly fast (built on ASGI) and perfect for Machine Learning applications, which naturally sit in Python environments (Scikit-learn, XGBoost, PyTorch).
+We built our backend using **FastAPI** because it is incredibly fast (built on ASGI) and perfect for Machine Learning applications, which naturally sit in Python environments (Scikit-learn, XGBoost).
+
+**Cloud startup sequence (`backend/s3_loader.py`):**
+On startup, if `USE_S3=true`, the backend connects to AWS S3 and downloads any missing model/data files before serving any requests. This means the server can run with **zero pre-bundled files** — everything is pulled from S3.
 
 **Core Endpoints:**
-*   `GET /health`: Simply returns `{status: "ok"}` to tell the frontend the server is alive.
-*   `GET /learning-curves`: Returns JSON lists of accuracy scores over time to plot our model performance charts.
-*   `POST /predict`: Receives a JSON object (a single network flow), feeds it through our preprocessor, generates predictions from all 3 models, computes SHAP values, and returns the result.
-*   `GET /stream`: This is the coolest part. We don't use standard HTTP calls here. We use **Server-Sent Events (SSE)**. The server keeps a connection open and continuously pushes new network flows from our dataset to the frontend to simulate live traffic!
-*   `GET /cloud-metrics`: Generates fake AWS CloudWatch metrics (latency, CPU, Cost) with random noise to simulate a real cloud environment scaling up and down.
+*   `GET /health`: Returns server status, `models_ready` flag, `dataset_source` URL, and full S3 sync status (bucket names, last sync time, sync duration, errors).
+*   `GET /learning-curves`: Returns JSON of F1 scores at 6 training-size fractions per model.
+*   `POST /predict`: Receives a JSON network flow, preprocesses it, runs inference on all 3 models, and returns predictions with per-model latency measurements.
+*   `GET /stream`: Uses **Server-Sent Events (SSE)** to continuously push real scored network flows from the test dataset to the frontend — live traffic simulation.
+*   `GET /stream/simulate`: Accepts `mode=portscan|ddos|cnc` and streams 300 synthetic attack flows for demonstration.
+*   `GET /cloud-metrics`: Returns latency, throughput, CPU, memory, and S3 cost metrics for the Cloud Infrastructure page.
 
 ## 3. The Frontend (React + TypeScript + Tailwind v4)
 *Located in `frontend/` directory.*
@@ -32,12 +36,20 @@ We built our backend using **FastAPI** because it is incredibly fast (built on A
 We built a modern, dark-themed dashboard using **React 18** and **Vite**.
 
 *   **TypeScript:** Prevents bugs by strictly typing what data looks like.
-*   **Tailwind CSS v4:** A utility-first CSS framework. We used it to design a custom cyber-security "dark mode" theme without writing endless CSS files.
-*   **React Query:** We use this library to fetch data from the FastAPI backend. It handles caching, loading states, and automatic retries perfectly.
-*   **Plotly.js:** Used to draw the complex scientific charts (Learning Curves, ROC, Confusion Matrices, and SHAP features).
+*   **Tailwind CSS v4:** Utility-first CSS for the dark cyber-security theme.
+*   **Plotly.js:** Complex scientific charts — Learning Curves, ROC, Confusion Matrices, SHAP waterfall.
 
-## 4. Latency, Throughput, and Scalability Paradigms
-As required by the course, our architecture demonstrates:
-1.  **Throughput:** The `/stream` SSE endpoint controls flow sizes to mimic thousands of packets per second.
-2.  **Latency Tracking:** Our `/predict` endpoint embeds a high-resolution timer (`time.perf_counter()`) to measure exactly how long model inference takes (usually single-digit milliseconds).
-3.  **Scalability (Simulated):** The Cloud Infrastructure dashboard visualizes how our theoretical AWS deployment reacts to load, demonstrating knowledge of auto-scaling groups and resource provisioning.
+## 4. Real Cloud Infrastructure (AWS)
+
+| AWS Service | Role |
+|---|---|
+| **S3** `cloud-soc-ml-artifacts-269223836366` | Stores 4 trained model `.joblib` files + 5 metric JSON files |
+| **S3** `cloud-soc-dataset-269223836366` | Stores the 417 MB IoT-23 `dev_scale` dataset (train/val/test TSVs) |
+| **Elastic Beanstalk** | Hosts the FastAPI backend with managed auto-scaling |
+| **Netlify** | Hosts the React frontend (static build) |
+
+## 5. Latency, Throughput, and Scalability Paradigms
+As required by the course brief, our architecture demonstrates:
+1.  **Throughput:** The `/stream` SSE endpoint pushes scored network flows continuously — measurable as events/second.
+2.  **Latency Tracking:** The `/predict` endpoint uses `time.perf_counter()` to measure per-model inference time (typically single-digit milliseconds). `/health` records S3 sync duration.
+3.  **Scalability:** Elastic Beanstalk provides real auto-scaling. We benchmark inference latency across dataset sizes to produce scaling curves for the report.

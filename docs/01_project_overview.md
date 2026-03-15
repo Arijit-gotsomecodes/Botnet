@@ -26,15 +26,27 @@ Our dashboard has 5 main pages, each proving a different concept for our project
 
 1. **Live Threat Monitor:** Streams real-time network traffic scored by our ML model. Includes three **attack simulation buttons** (Port Scan, DDoS, C&C) that generate realistic synthetic attack traffic so you can see how the models respond to different threat scenarios.
 2. **Model Performance:** Proves our Machine Learning actually works. We compare three different "brains" (Algorithms) to see which is smartest.
-3. **Cloud Infrastructure:** A simulation of an AWS environment. Shows what happens when traffic gets too heavy and the cloud has to automatically add more servers (Auto-scaling).
+3. **Cloud Infrastructure:** Shows our real AWS deployment — models served from S3, backend hosted on Elastic Beanstalk, with live latency and throughput metrics.
 4. **Explainable AI (XAI):** Machine learning shouldn't be a "black box". This page explains *why* the AI thought something was a hack, showing exactly which data points tipped it off.
 5. **Data Pipeline:** Shows the full journey of our data, including a **Class Balancing Strategy** section with before/after SMOTE visualizations proving we handled the dataset's natural class imbalance.
 
 ## 4. The Dataset We Used
-We used the famous **IoT-23 dataset**. This dataset was created by real cybersecurity researchers (Stratosphere Laboratory). They literally set up infected IoT devices in a lab, let them attack things, and recorded all the internet traffic.
+We used the **IoT-23 dataset**, publicly available online at [stratosphereips.org/datasets-iot23](https://www.stratosphereips.org/datasets-iot23). This dataset was created by real cybersecurity researchers (Stratosphere Laboratory). They literally set up infected IoT devices in a lab, let them attack things, and recorded all the internet traffic.
 
-*   **Total Data:** Millions of rows.
-*   **What we used:** A scientifically sampled subset of ~2.2 million rows (our `dev_scale` dataset) so we could train models fast but accurately.
+*   **Total Data:** ~325 million rows across 23 network captures.
+*   **What we used:** A scientifically sampled subset of ~2.2 million rows (`dev_scale`) — stored in AWS S3 and downloaded by the backend on startup.
+
+## 5. The Cloud Architecture
+Our project uses **real AWS cloud infrastructure**:
+
+| Component | AWS Service |
+|---|---|
+| ML model files (`.joblib`, `.json`) | `s3://cloud-soc-ml-artifacts-269223836366/models/` |
+| IoT-23 `dev_scale` dataset (TSVs) | `s3://cloud-soc-dataset-269223836366/dev_scale/` |
+| FastAPI backend | AWS Elastic Beanstalk (us-east-1) |
+| React frontend | Netlify |
+
+On startup, the backend checks `USE_S3=true` and pulls any missing model/data files from S3 automatically. This is implemented in `backend/s3_loader.py`.
 
 ---
 

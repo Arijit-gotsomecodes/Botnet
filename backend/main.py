@@ -2,6 +2,13 @@
 main.py — FastAPI backend for the Cloud-SOC Dashboard.
 """
 
+# Load .env before any other imports so USE_S3 and AWS_* vars are set in time
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 import asyncio
 import json
 import random
@@ -25,6 +32,7 @@ from sampling_parser import (
     parse_capture_table, parse_reproducibility, parse_summary_stats,
     parse_pipeline_steps, parse_soft_balancing, parse_source_totals,
 )
+from s3_loader import sync_from_s3, get_status as s3_status
 
 # ── App ──────────────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -42,6 +50,11 @@ app.add_middleware(
 )
 
 MODELS_DIR = Path(__file__).parent / "models"
+
+# ── Startup: pull artifacts from S3 if USE_S3=true ───────────────────────────
+@app.on_event("startup")
+async def _startup():
+    sync_from_s3()
 
 # ── Lazy-loaded globals ──────────────────────────────────────────────────────
 _models = {}
@@ -120,6 +133,8 @@ def health():
         "timestamp": time.time(),
         "models_ready": models_ready,
         "version": "1.0.0",
+        "dataset_source": "https://www.stratosphereips.org/datasets-iot23",
+        "s3": s3_status(),
     }
 
 

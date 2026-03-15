@@ -7,6 +7,11 @@ import re
 from pathlib import Path
 
 REPORT_PATH = Path(__file__).resolve().parent.parent / "DATA" / "sampling_report.txt"
+# Fallback: some setups have the file under Data_here/DATA/
+if not REPORT_PATH.exists():
+    _alt = Path(__file__).resolve().parent.parent / "Data_here" / "DATA" / "sampling_report.txt"
+    if _alt.exists():
+        REPORT_PATH = _alt
 
 
 def _read_report() -> str:

@@ -19,8 +19,8 @@ const DEFAULT_FEATURES = {
 
 const PRESET_FLOWS = [
     { name: '🟢 Benign HTTP', features: { duration: 1.2, orig_bytes: 350, resp_bytes: 5200, orig_pkts: 8, resp_pkts: 12, orig_ip_bytes: 670, resp_ip_bytes: 5680, missed_bytes: 0, proto: 'tcp', conn_state: 'SF', service: 'http' } },
-    { name: '🔴 Port Scan', features: { duration: 0.0, orig_bytes: 0, resp_bytes: 0, orig_pkts: 1, resp_pkts: 0, orig_ip_bytes: 40, resp_ip_bytes: 0, missed_bytes: 0, proto: 'tcp', conn_state: 'S0', service: '-' } },
-    { name: '🔴 DDoS Attack', features: { duration: 0.001, orig_bytes: 1, resp_bytes: 0, orig_pkts: 1, resp_pkts: 0, orig_ip_bytes: 42, resp_ip_bytes: 0, missed_bytes: 0, proto: 'udp', conn_state: 'S0', service: '-' } },
+    { name: '🔴 Port Scan', features: { duration: 0.000005, orig_bytes: 0, resp_bytes: 0, orig_pkts: 1, resp_pkts: 0, orig_ip_bytes: 60, resp_ip_bytes: 0, missed_bytes: 0, proto: 'tcp', conn_state: 'S0', service: '-' } },
+    { name: '🔴 DDoS Attack', features: { duration: 0.000002, orig_bytes: 0, resp_bytes: 0, orig_pkts: 2, resp_pkts: 0, orig_ip_bytes: 80, resp_ip_bytes: 0, missed_bytes: 0, proto: 'tcp', conn_state: 'S0', service: '-' } },
     { name: '🟢 DNS Query', features: { duration: 0.05, orig_bytes: 37, resp_bytes: 179, orig_pkts: 1, resp_pkts: 1, orig_ip_bytes: 65, resp_ip_bytes: 207, missed_bytes: 0, proto: 'udp', conn_state: 'SF', service: 'dns' } },
 ];
 
