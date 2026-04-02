@@ -197,13 +197,11 @@ export default function CloudInfrastructure() {
                     <Cpu className="w-3.5 h-3.5" />
                     AWS Service Health
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                    <ServiceBadge name="API Gateway" status={services.api_gateway.status} detail={`${services.api_gateway.latency_ms}ms`} />
-                    <ServiceBadge name="Lambda" status={services.lambda.status} detail={`Cold: ${services.lambda.cold_start_ms}ms`} />
-                    <ServiceBadge name="SageMaker" status={services.sagemaker.status} detail={`${services.sagemaker.endpoint_latency_ms}ms`} />
-                    <ServiceBadge name="S3" status={services.s3.status} detail={`${services.s3.objects_count} objects`} />
+                <div className="grid grid-cols-2 gap-3">
+                    <ServiceBadge name="EC2 Instance" status={services.ec2_instance.status} detail={`${services.ec2_instance.latency_ms}ms p50`} />
+                    <ServiceBadge name="S3 Storage" status={services.s3.status} detail={`${services.s3.objects_count} objects`} />
+                    <ServiceBadge name="CloudFront" status={services.cloudfront.status} detail={`${services.cloudfront.cache_hit_rate} hit rate`} />
                     <ServiceBadge name="CloudWatch" status={services.cloudwatch.status} detail={`${services.cloudwatch.alarms_active} alarms`} />
-                    <ServiceBadge name="Auto Scaling" status="healthy" detail={`${instanceCount} instances`} />
                 </div>
             </div>
         </div>

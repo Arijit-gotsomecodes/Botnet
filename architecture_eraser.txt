@@ -1,0 +1,57 @@
+// Cloud-SOC Machine Learning Dashboard
+// Eraser.io Diagram-as-Code
+
+User [icon: user]
+
+AWS Region (us-east-1) [icon: aws] {
+  
+  Frontend Hosting [color: blue] {
+    S3 Dashboard Bucket (Static Website) [icon: aws-s3] {
+      React App (Vite) [icon: react]
+      Tailwind CSS [icon: tailwindcss]
+    }
+  }
+
+  Backend Infrastructure [color: orange] {
+    EC2 Instance (t3.small) [icon: aws-ec2] {
+      Systemd Service [icon: server] {
+        Uvicorn Server [icon: terminal]
+        FastAPI App [icon: python]
+      }
+      
+      ML Pipeline [icon: target] {
+        Random Forest [icon: tool]
+        XGBoost [icon: tool]
+        Neural Network (MLP) [icon: tool]
+      }
+    }
+  }
+
+  Cloud Storage [color: green] {
+    ML Artifacts Bucket [icon: aws-s3] {
+      Pre-trained Models (.joblib) [icon: file]
+      Metrics & ROC Data (.json) [icon: align-left]
+    }
+    
+    IoT Dataset Bucket [icon: aws-s3] {
+      Dev Scale TSV Files [icon: database]
+      Sampling Report [icon: file-text]
+    }
+  }
+}
+
+// ─── Network Flow & Interactions ───
+
+// 1. Initial Load
+User > S3 Dashboard Bucket (Static Website): 1. Loads React SPA (HTTP)
+
+// 2. Continuous Streams & API Calls
+User > EC2 Instance (t3.small): 2. EventSource SSE Stream & API Requests (HTTP:8000)
+
+// 3. Startup Data Sync
+EC2 Instance (t3.small) > ML Artifacts Bucket: 3. Downloads ML models on boot
+EC2 Instance (t3.small) > IoT Dataset Bucket: 4. Downloads test/train TSV data on boot
+
+// 4. Internal Data Flow
+FastAPI App > ML Pipeline: 5. Live predictions on SSE flows
+ML Pipeline > FastAPI App: 6. Inference results & confidence scores

@@ -13,7 +13,15 @@ import asyncio
 import json
 import random
 import time
+from collections import deque
+import psutil
 from pathlib import Path
+
+# Trackers for live metrics
+request_times = deque(maxlen=2000)
+latency_history = deque(maxlen=2000)
+
+psutil.cpu_percent(interval=None)  # Initialize CPU measurement
 
 import numpy as np
 import pandas as pd
@@ -536,49 +544,77 @@ async def stream_simulate(
     )
 
 
+@app.middleware("http")
+async def track_metrics(request, call_next):
+    # Don't track the long-lived SSE stream for latency, as it skews the average to infinity
+    if request.url.path == "/stream":
+        # We still count the stream request for throughput, but not latency
+        request_times.append(time.time())
+        return await call_next(request)
+
+    start_time = time.time()
+    response = await call_next(request)
+    process_time_ms = (time.time() - start_time) * 1000.0
+    
+    latency_history.append(process_time_ms)
+    request_times.append(time.time())
+    return response
+
 @app.get("/cloud-metrics")
 def cloud_metrics():
-    """Simulated AWS CloudWatch-style metrics."""
-    base_latency = random.uniform(15, 40)
-    load_pct = random.uniform(20, 85)
-    throughput = random.uniform(500, 2000)
+    """Live system metrics using psutil and request tracking."""
+    current_time = time.time()
+    
+    # Calculate CPU and Memory
+    cpu_pct = psutil.cpu_percent(interval=None)
+    memory = psutil.virtual_memory()
+    mem_pct = memory.percent
+    
+    # Calculate throughput (requests in last 60 seconds)
+    reqs_last_min = sum(1 for t in request_times if current_time - t <= 60)
+    reqs_per_sec = reqs_last_min / 60.0
+    
+    # Calculate Latency Percentiles
+    if latency_history:
+        latencies = sorted(list(latency_history))
+        p50 = latencies[int(len(latencies) * 0.5)]
+        p95 = latencies[int(len(latencies) * 0.95)]
+        p99 = latencies[int(len(latencies) * 0.99)]
+    else:
+        p50 = p95 = p99 = 0.0
 
     return {
         "latency": {
-            "p50_ms": round(base_latency, 1),
-            "p95_ms": round(base_latency * 2.5 + random.uniform(5, 20), 1),
-            "p99_ms": round(base_latency * 4 + random.uniform(10, 40), 1),
+            "p50_ms": round(p50, 1),
+            "p95_ms": round(p95, 1),
+            "p99_ms": round(p99, 1),
         },
         "throughput": {
-            "requests_per_second": round(throughput, 0),
-            "events_processed_per_minute": round(throughput * 60, 0),
+            "requests_per_second": round(reqs_per_sec, 1),
+            "events_processed_per_minute": reqs_last_min,
         },
         "auto_scaling": {
-            "current_instances": max(1, int(load_pct / 25) + 1),
-            "max_instances": 8,
-            "cpu_utilization_pct": round(load_pct, 1),
-            "memory_utilization_pct": round(load_pct * 0.7 + random.uniform(5, 15), 1),
+            "current_instances": 1,
+            "max_instances": 1,
+            "cpu_utilization_pct": round(cpu_pct, 1),
+            "memory_utilization_pct": round(mem_pct, 1),
             "scale_in_cooldown_sec": 300,
             "scale_out_cooldown_sec": 120,
         },
         "cost_estimate": {
             "daily": {
-                "s3_storage": round(random.uniform(0.02, 0.08), 3),
-                "s3_requests": round(random.uniform(0.01, 0.05), 3),
-                "sagemaker_inference": round(random.uniform(2.0, 8.0), 2),
-                "lambda_invocations": round(random.uniform(0.5, 2.0), 2),
-                "cloudwatch_logs": round(random.uniform(0.1, 0.5), 2),
-                "data_transfer": round(random.uniform(0.05, 0.3), 2),
+                "ec2_t3_small": 0.50,
+                "s3_storage_and_requests": 0.05,
+                "cloudfront_data_transfer": 0.10,
             },
-            "monthly_projected": round(random.uniform(90, 320), 2),
+            "monthly_projected": round(0.65 * 30, 2),
             "currency": "USD",
         },
         "services": {
-            "api_gateway": {"status": "healthy", "latency_ms": round(random.uniform(1, 5), 1)},
-            "lambda": {"status": "healthy", "cold_start_ms": round(random.uniform(100, 500), 0)},
-            "sagemaker": {"status": "healthy", "endpoint_latency_ms": round(random.uniform(20, 80), 1)},
+            "ec2_instance": {"status": "healthy", "latency_ms": round(p50, 1)},
             "s3": {"status": "healthy", "objects_count": 23},
-            "cloudwatch": {"status": "healthy", "alarms_active": random.randint(0, 2)},
+            "cloudfront": {"status": "healthy", "cache_hit_rate": "100%"},
+            "cloudwatch": {"status": "healthy", "alarms_active": 0},
         },
-        "timestamp": time.time(),
+        "timestamp": current_time,
     }

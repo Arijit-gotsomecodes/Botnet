@@ -12,9 +12,16 @@ if not REPORT_PATH.exists():
     _alt = Path(__file__).resolve().parent.parent / "Data_here" / "DATA" / "sampling_report.txt"
     if _alt.exists():
         REPORT_PATH = _alt
+    else:
+        # Fallback 2: S3 downloaded path
+        _alt2 = Path(__file__).resolve().parent.parent / "DATA" / "sample_data" / "dev_scale" / "sampling_report.txt"
+        if _alt2.exists():
+            REPORT_PATH = _alt2
 
 
 def _read_report() -> str:
+    if not REPORT_PATH.exists():
+        return ""
     return REPORT_PATH.read_text(encoding="utf-8")
 
 

@@ -49,7 +49,7 @@ MODEL_FILES = [
 ]
 
 # Files in s3://DATASET_BUCKET/dev_scale/
-DATASET_FILES = ["train.tsv", "val.tsv", "test.tsv", "sampling_manifest.csv"]
+DATASET_FILES = ["train.tsv", "val.tsv", "test.tsv", "sampling_manifest.csv", "sampling_report.txt"]
 
 _s3_client = None
 _s3_status: dict = {
