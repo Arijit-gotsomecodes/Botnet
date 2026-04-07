@@ -67,79 +67,68 @@ python upload_to_s3.py
 
 ---
 
-## 4. Deploy Backend to AWS Elastic Beanstalk
+## 4. Deploy Backend to AWS EC2
 
-### 4.1 Prerequisites
+### 4.1 Launch an EC2 Instance
+1. Launch a `t3.small` instance in `us-east-1` using Amazon Linux 2023 or Ubuntu.
+2. Edit the Security Group to allow inbound traffic on port `8000`.
+
+### 4.2 Setup the Environment
+SSH into the instance and install dependencies:
 ```bash
-pip install awsebcli
-eb --version
+sudo yum update -y
+sudo yum install python3 pip git -y
+# Clone your repository here
+cd Botnet/backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
-### 4.2 Create the Application
+### 4.3 Configure and Start systemd Service
+To ensure the backend runs continuously and restarts on boot:
 ```bash
-cd backend
-
-# Initialise EB (select us-east-1, Python 3.11, no CodeCommit)
-eb init cloud-soc-backend --region us-east-1 --platform "Python 3.11"
+sudo nano /etc/systemd/system/cloud-soc.service
 ```
+Add the following configuration (adjust paths as needed):
+```ini
+[Unit]
+Description=Cloud-SOC FastAPI Backend
 
-### 4.3 Create a Procfile
-The EB Python platform needs a `Procfile` to know how to start the server:
+[Service]
+User=ec2-user
+WorkingDirectory=/home/ec2-user/Botnet/backend
+Environment="PATH=/home/ec2-user/Botnet/backend/venv/bin"
+Environment="USE_S3=true"
+ExecStart=/home/ec2-user/Botnet/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 
-```bash
-cat > Procfile << 'EOF'
-web: uvicorn main:app --host 0.0.0.0 --port 8000
-EOF
+[Install]
+WantedBy=multi-user.target
 ```
-
-### 4.4 Set Environment Variables on EB
+Start and enable the service:
 ```bash
-eb setenv USE_S3=true AWS_REGION=us-east-1
-```
-> EB instances use IAM roles — no `AWS_ACCESS_KEY_ID` needed if you attach the `AmazonS3ReadOnlyAccess` policy to the EB instance profile.
-
-### 4.5 Create and Deploy the Environment
-```bash
-eb create cloud-soc-prod --instance-type t3.small --single
-```
-This will:
-- Package the `backend/` directory
-- Upload to S3 (EB deployment bucket)
-- Launch an EC2 instance
-- Install dependencies from `requirements.txt`
-- Start uvicorn via the `Procfile`
-- On startup, pull model files from S3 automatically
-
-### 4.6 Get the Public URL
-```bash
-eb status
-# Look for: CNAME: cloud-soc-prod.elasticbeanstalk.com
+sudo systemctl daemon-reload
+sudo systemctl start cloud-soc
+sudo systemctl enable cloud-soc
 ```
 
 Test it:
 ```bash
-curl http://cloud-soc-prod.elasticbeanstalk.com/health
-```
-
-### 4.7 Future Deploys (after code changes)
-```bash
-eb deploy cloud-soc-prod
+curl http://<EC2-PUBLIC-IP>:8000/health
 ```
 
 ---
 
-## 5. Deploy Frontend to Netlify
+## 5. Deploy Frontend to Amazon S3 and CloudFront
 
 ```bash
 cd frontend
+# Make sure .env.production points to the EC2 IP
+# e.g., VITE_API_URL=http://<EC2-PUBLIC-IP>:8000
 npm run build
-# Drag and drop the `dist/` folder to https://app.netlify.com/drop
 ```
 
-Then update `frontend/src/api.ts` to point to the EB URL:
-```typescript
-const API_BASE = "http://cloud-soc-prod.elasticbeanstalk.com";
-```
+Then upload the contents of the `dist/` directory to your S3 bucket (`cloud-soc-dashboard-269223836366`), ensuring static website hosting is enabled. Finally, point an Amazon CloudFront distribution to the S3 bucket for fast global delivery.
 
 ---
 
@@ -149,10 +138,13 @@ const API_BASE = "http://cloud-soc-prod.elasticbeanstalk.com";
 User Browser
     │
     ▼
-Netlify (React SPA)          ← static build from dist/
+Amazon CloudFront
+    │  
+    ▼
+S3: cloud-soc-dashboard-*    (React SPA static build)
     │  REST + SSE
     ▼
-AWS Elastic Beanstalk         ← FastAPI + uvicorn (t3.small)
+AWS EC2 Instance              ← FastAPI + uvicorn (t3.small)
     │  boto3 on startup
     ├──▶ S3: cloud-soc-ml-artifacts-*   (models)
     └──▶ S3: cloud-soc-dataset-*        (IoT-23 dev_scale)
@@ -165,8 +157,8 @@ AWS Elastic Beanstalk         ← FastAPI + uvicorn (t3.small)
 | Brief Requirement | How We Cover It |
 |---|---|
 | Data collected online | IoT-23 from https://www.stratosphereips.org/datasets-iot23 |
-| Cloud storage | S3 buckets for dataset + model artifacts |
-| Cloud model serving | FastAPI on Elastic Beanstalk loads models from S3 |
-| Prototype to end-users | Public Netlify URL → EB backend |
+| Cloud storage | S3 buckets for dataset + model artifacts + frontend hosting |
+| Cloud model serving | FastAPI on EC2 loads models from S3 |
+| Prototype to end-users | Public CloudFront URL → EC2 backend |
 | Latency reporting | `/predict` timer + `/health` S3 sync duration |
-| Scalability | EB auto-scaling group; benchmark across dataset sizes |
+| Scalability | Stateless EC2 backend allows replication behind a load balancer |

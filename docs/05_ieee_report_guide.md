@@ -4,7 +4,7 @@
 
 ## Title ideas
 *   *Cloud-SOC: A Cloud-Native Dashboard for Real-Time IoT Malware Detection using Ensemble and Deep Learning*
-*   *Performance Analysis of ML Models for IoT Intrusion Detection with AWS S3 and Elastic Beanstalk Deployment*
+*   *Performance Analysis of ML Models for IoT Intrusion Detection with AWS S3 and EC2 Deployment*
 
 ## I. Abstract (100–150 words)
 Summarise: IoT botnet problem → IoT-23 dataset → 3 ML models (RF, XGB, NN) → deployed on AWS → real-time dashboard → F1 ~0.977 across all models.
@@ -37,8 +37,8 @@ Look up 3–4 papers on Google Scholar: *"IoT-23 intrusion detection machine lea
 ## VI. Cloud Architecture
 *   **Data collection:** IoT-23 sourced online (stratosphereips.org) → uploaded to S3.
 *   **Storage:** Two S3 buckets — one for models, one for dataset.
-*   **Serving:** FastAPI on AWS Elastic Beanstalk. On boot, `s3_loader.py` pulls models from S3 (avg. 3.6s cold start).
-*   **Frontend:** React SPA on Netlify, calls Elastic Beanstalk endpoint.
+*   **Serving:** FastAPI on an AWS EC2 instance. On boot, `s3_loader.py` pulls models from S3 (avg. 3.6s cold start).
+*   **Frontend:** React SPA hosted on S3 and served through CloudFront, calls EC2 endpoint.
 *   Include `/health` JSON screenshot showing `s3.enabled: true`, bucket names, `sync_duration_s`.
 *   **(Use `docs/04_system_architecture.md` + `docs/06_cloud_deploy.md`)**
 
@@ -54,7 +54,7 @@ Look up 3–4 papers on Google Scholar: *"IoT-23 intrusion detection machine lea
 ## VIII. Conclusions & Future Work
 *   Summarise: all 3 models achieve near-identical F1 (~0.977) and perfect recall on IoT-23.
 *   RF/XGB have lower latency than NN → better suited for real-time cloud serving.
-*   Cloud deployment on Elastic Beanstalk enables real auto-scaling; S3 decouples model storage from server lifecycle.
+*   Cloud deployment on EC2 with a stateless backend allows horizontal scaling; S3 decouples model storage from server lifecycle.
 *   Future: real SageMaker endpoint, larger `final_scale` dataset, concept-drift detection.
 
 ## IX. Contributions Table

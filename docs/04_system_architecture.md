@@ -45,11 +45,11 @@ We built a modern, dark-themed dashboard using **React 18** and **Vite**.
 |---|---|
 | **S3** `cloud-soc-ml-artifacts-269223836366` | Stores 4 trained model `.joblib` files + 5 metric JSON files |
 | **S3** `cloud-soc-dataset-269223836366` | Stores the 417 MB IoT-23 `dev_scale` dataset (train/val/test TSVs) |
-| **Elastic Beanstalk** | Hosts the FastAPI backend with managed auto-scaling |
-| **Netlify** | Hosts the React frontend (static build) |
+| **EC2 (t3.small)** | Hosts the FastAPI backend as a systemd service |
+| **S3 + CloudFront** | Hosts the React frontend (static build) |
 
 ## 5. Latency, Throughput, and Scalability Paradigms
 As required by the course brief, our architecture demonstrates:
 1.  **Throughput:** The `/stream` SSE endpoint pushes scored network flows continuously — measurable as events/second.
 2.  **Latency Tracking:** The `/predict` endpoint uses `time.perf_counter()` to measure per-model inference time (typically single-digit milliseconds). `/health` records S3 sync duration.
-3.  **Scalability:** Elastic Beanstalk provides real auto-scaling. We benchmark inference latency across dataset sizes to produce scaling curves for the report.
+3.  **Scalability:** The stateless EC2 backend can be replicated behind a load balancer. We benchmark inference latency across dataset sizes to produce scaling curves for the report.
